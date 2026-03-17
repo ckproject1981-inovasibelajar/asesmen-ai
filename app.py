@@ -33,70 +33,63 @@ PEDOMAN KKO UNTUK LEVEL PERGURUAN TINGGI:
 
 INSTRUKSI KHUSUS UNTUK FORMAT OUTPUT:
 Untuk setiap butir soal yang dihasilkan, Anda WAJIB menyertakan elemen berikut:
-1. Level Bloom: Sebutkan kode (C1-C6) dan nama tingkatannya.
-2. Rasional Level Bloom: Jelaskan alasan mengapa pertanyaan tersebut dikategorikan ke dalam level tersebut berdasarkan aktivitas kognitif yang diminta.
-3. Pertanyaan: Teks soal yang jelas dan akademis.
+1. Level Bloom: Kode (C1-C6) dan nama tingkatannya.
+2. Rasional Level Bloom: Penjelasan aktivitas kognitif mengapa soal masuk level tersebut.
+3. Pertanyaan: Teks soal akademis.
 4. Pilihan Jawaban/Instruksi Jawaban: (Opsi A-D untuk Pilihan Ganda, atau batasan jawaban untuk Esai).
-5. Kunci Jawaban: Jawaban yang benar atau poin utama yang diharapkan.
-6. Penjelasan Kunci Jawaban: Alasan logis mengapa jawaban tersebut benar berdasarkan materi pembelajaran.
+5. Kunci Jawaban: Jawaban benar atau poin utama.
+6. Penjelasan Kunci Jawaban: Alasan logis berdasarkan materi.
 
 Gunakan bahasa Indonesia yang formal dan akademis (sesuai EBI).
 """
 
-def generate_quiz(materi, format_soal, level_bloom, api_key, model_choice):
+def generate_quiz(materi, format_soal, level_bloom, api_key, jumlah_soal):
     # Konfigurasi API
     genai.configure(api_key=api_key)
     
-    # Logika Pemilihan Model
-    if model_choice == "Gemini 1.5 Flash (Cepat)":
-        selected_model = "gemini-1.5-flash"
-    else:
-        selected_model = "gemini-1.5-pro"
-        
-    model = genai.GenerativeModel(selected_model)
+    # Menggunakan model gemini-1.5-flash untuk stabilitas dan kecepatan
+    model = genai.GenerativeModel('gemini-1.5-flash')
     
     user_query = f"""
     Materi Pembelajaran: 
     {materi}
 
     Instruksi Tugas:
-    Buatlah soal dalam format {format_soal} untuk tingkat kognitif berikut: {', '.join(level_bloom)}.
-    Terapkan instruksi khusus mengenai Rasional Bloom dan Penjelasan Jawaban secara mendetail.
+    Buatlah sebanyak {jumlah_soal} soal dalam format {format_soal}.
+    Distribusikan soal tersebut pada tingkat kognitif berikut: {', '.join(level_bloom)}.
+    Pastikan setiap nomor soal memiliki Rasional Bloom dan Penjelasan Jawaban secara mendetail.
     """
     
     try:
         response = model.generate_content([SYSTEM_PROMPT, user_query])
         return response.text
     except Exception as e:
-        return f"Terjadi kesalahan pada model: {str(e)}"
+        return f"Terjadi kesalahan pada sistem: {str(e)}"
 
 # --- Antarmuka Streamlit ---
 st.set_page_config(page_title="AI Pedagogy Generator", page_icon="🎓", layout="wide")
 
 st.title("🎓 AI Pedagogy Quiz Generator")
-st.markdown("Pembangun instrumen asesmen berbasis **Higher Order Thinking Skills (HOTS)**.")
+st.markdown("Pembangun instrumen asesmen berbasis **Higher Order Thinking Skills (HOTS)** untuk Perguruan Tinggi.")
 
-# --- Manajemen API Key (Streamlit Secrets) ---
+# --- Manajemen API Key ---
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
 else:
     api_key = st.sidebar.text_input("Masukkan Gemini API Key (Manual)", type="password")
-    st.sidebar.warning("Tips: Simpan API Key di `.streamlit/secrets.toml` untuk penggunaan otomatis.")
+    st.sidebar.warning("Dapatkan API Key di Google AI Studio.")
 
-# --- Sidebar Pengaturan ---
+# --- Sidebar Info ---
 with st.sidebar:
-    st.header("⚙️ Pengaturan Model")
-    model_option = st.radio(
-        "Pilih Otak AI:",
-        ("Gemini 1.5 Flash (Cepat)", "Gemini 1.5 Pro (Lebih Akurat/HOTS)")
-    )
+    st.header("📌 Info Aplikasi")
+    st.write("Aplikasi ini menggunakan model **Gemini 1.5 Flash** untuk kecepatan pemrosesan data materi secara instan.")
     st.divider()
-    st.info("Model Pro sangat disarankan untuk menghasilkan 'Rasional Pedagogis' dan 'Penjelasan Jawaban' yang lebih mendalam.")
+    st.caption("Dikembangkan untuk mendukung Standar OBE (Outcome-Based Education).")
 
 # --- Area Input ---
-materi_input = st.text_area("📖 Masukkan Materi Pembelajaran:", height=250, placeholder="Tempelkan teks materi atau ringkasan kuliah di sini...")
+materi_input = st.text_area("📖 Masukkan Materi Pembelajaran:", height=200, placeholder="Tempelkan teks materi atau ringkasan kuliah di sini...")
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns([2, 2, 1])
 with col1:
     format_pilihan = st.selectbox("📝 Format Soal", ["Pilihan Ganda", "Esai"])
 with col2:
@@ -104,6 +97,8 @@ with col2:
                                    ["Remembering", "Understanding", "Applying", 
                                     "Analyzing", "Evaluating", "Creating"],
                                    default=["Analyzing", "Evaluating"])
+with col3:
+    jumlah_soal = st.number_input("🔢 Jumlah Soal", min_value=1, max_value=20, value=5)
 
 # --- Eksekusi ---
 if st.button("Generate Asesmen Lengkap", type="primary"):
@@ -114,8 +109,8 @@ if st.button("Generate Asesmen Lengkap", type="primary"):
     elif not level_pilihan:
         st.warning("Pilih setidaknya satu Level Bloom.")
     else:
-        with st.spinner(f"AI sedang menganalisis materi dan merancang soal menggunakan {model_option}..."):
-            hasil_soal = generate_quiz(materi_input, format_pilihan, level_pilihan, api_key, model_option)
+        with st.spinner("AI sedang merancang soal berdasarkan standar pedagogi..."):
+            hasil_soal = generate_quiz(materi_input, format_pilihan, level_pilihan, api_key, jumlah_soal)
             st.divider()
             st.markdown(hasil_soal)
             
@@ -128,4 +123,4 @@ if st.button("Generate Asesmen Lengkap", type="primary"):
             )
 
 st.markdown("---")
-st.caption("Dikembangkan untuk mendukung Standar Penilaian Perguruan Tinggi (OBE).")
+st.caption("© 2026 AI Assessment Designer - Higher Education Edition")
